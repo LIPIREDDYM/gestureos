@@ -67,13 +67,17 @@ export function getFingerState(frame: HandFrame): FingerState {
   };
 }
 
-/** Open Palm: all five fingers extended. */
+/** Open Palm: four fingers extended (thumb is relaxed/optional — naturally angled). */
 export function detectOpenPalm(fingers: FingerState): number {
-  const extended = [fingers.thumb, fingers.index, fingers.middle, fingers.ring, fingers.pinky];
-  const avg = extended.reduce((a, b) => a + b, 0) / extended.length;
-  const min = Math.min(...extended);
-  // Require every finger to be reasonably extended, weighted toward the worst finger
-  return clampConfidence(avg * 0.4 + min * 0.6);
+  // Only require index, middle, ring, pinky to be extended.
+  // The thumb is naturally angled away and frequently under-scores even on a
+  // perfect open hand, so excluding it makes detection much more reliable.
+  const fourFingers = [fingers.index, fingers.middle, fingers.ring, fingers.pinky];
+  const avg = fourFingers.reduce((a, b) => a + b, 0) / fourFingers.length;
+  const min = Math.min(...fourFingers);
+  // Weight avg more heavily (0.7) vs min (0.3) so one slightly-curled finger
+  // doesn't tank the whole score.
+  return clampConfidence(avg * 0.7 + min * 0.3);
 }
 
 /** Fist: all five fingers curled. */

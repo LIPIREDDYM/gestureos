@@ -81,9 +81,13 @@ export async function loadHands(): Promise<MpHandsInstance> {
 
     hands.setOptions({
       maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.7,
-      minTrackingConfidence: 0.6,
+      // Use the lite model (0) for dramatically better performance on most
+      // hardware. The full model (1) is more accurate but unnecessary for
+      // the 7-gesture set we recognise, and it competes with the rest of
+      // the UI for GPU/CPU resources.
+      modelComplexity: 0,
+      minDetectionConfidence: 0.65,
+      minTrackingConfidence: 0.55,
     });
 
     return hands;

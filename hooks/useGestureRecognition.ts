@@ -45,8 +45,10 @@ export function useGestureRecognition({
 
   const lastEmittedRef = useRef<{ type: GestureType; time: number }>({ type: "none", time: 0 });
   const swipeHistoryRef = useRef<{ x: number; t: number }[]>([]);
-  const smootherX = useRef(new EmaSmoother(0.4));
-  const smootherY = useRef(new EmaSmoother(0.4));
+  // Lower alpha = more smoothing, less jitter. 0.25 gives fluid motion while
+  // still tracking fast movements without perceptible lag.
+  const smootherX = useRef(new EmaSmoother(0.25));
+  const smootherY = useRef(new EmaSmoother(0.25));
 
   useEffect(() => {
     if (!frame) {
@@ -119,25 +121,31 @@ export function useGestureRecognition({
     };
     setGesture(next);
 
+    const eventType = next.type;
+
     // Emit discrete gesture events with a cooldown so a held pose (e.g.
     // holding thumbs-up for 2s) doesn't spam "save" repeatedly.
-    const isDiscrete = bestType !== "none" && bestType !== "open_palm" && bestType !== "fist";
+    const isDiscrete =
+      eventType !== "none" &&
+      eventType !== "open_palm" &&
+      eventType !== "fist" &&
+      eventType !== "pinch";
     if (isDiscrete) {
       const last = lastEmittedRef.current;
-      const cooledDown = now - last.time > cfg.cooldownMs || last.type !== bestType;
+      const cooledDown = now - last.time > cfg.cooldownMs || last.type !== eventType;
       if (cooledDown) {
-        lastEmittedRef.current = { type: bestType, time: now };
+        lastEmittedRef.current = { type: eventType, time: now };
         onGesture?.(next);
         if (swipeType) {
           swipeHistoryRef.current = []; // reset so we don't double-fire the same swipe
         }
       }
-    } else if (bestType === "open_palm") {
-      // Open palm is treated as "continuous" (fires on entry only) so the
-      // launcher opens once per gesture, not every frame it's held.
+    } else if (eventType === "open_palm" || eventType === "fist") {
+      // open_palm and fist are "entry-only" — fire once when the pose is
+      // first held, not on every frame while it's sustained.
       const last = lastEmittedRef.current;
-      if (last.type !== "open_palm" || now - last.time > cfg.cooldownMs) {
-        lastEmittedRef.current = { type: "open_palm", time: now };
+      if (last.type !== eventType || now - last.time > cfg.cooldownMs) {
+        lastEmittedRef.current = { type: eventType, time: now };
         onGesture?.(next);
       }
     }

@@ -32,6 +32,10 @@ export function useHandTracking({ enabled }: UseHandTrackingOptions): UseHandTra
   const [currentFrame, setCurrentFrame] = useState<HandFrame | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { fps, tick } = useFPS();
+  // Keep tick in a ref so the onResults callback never needs to be
+  // re-registered when tick's identity changes between renders.
+  const tickRef = useRef(tick);
+  useEffect(() => { tickRef.current = tick; });
 
   const stop = useCallback(() => {
     cancelledRef.current = true;
@@ -85,17 +89,32 @@ export function useHandTracking({ enabled }: UseHandTrackingOptions): UseHandTra
         hands.onResults((results) => {
           const frame = toHandFrame(results);
           setCurrentFrame(frame);
-          tick();
+          tickRef.current();
         });
 
         setCameraStatus("streaming");
 
-        const loop = async () => {
+        // Cap at ~30 fps by skipping frames when MediaPipe is still
+        // processing. Without this, frames pile up in the microtask queue
+        // and the pipeline gets progressively laggier over time.
+        let busyRef = false;
+        let lastFrameTime = 0;
+        const TARGET_INTERVAL_MS = 1000 / 30; // ~33 ms per frame
+
+        const loop = async (timestamp: number) => {
           if (cancelledRef.current || !handsRef.current || !videoRef.current) return;
-          try {
-            await handsRef.current.send({ image: videoRef.current });
-          } catch {
-            // Transient send failures (e.g. during teardown) are safe to skip.
+
+          const elapsed = timestamp - lastFrameTime;
+          if (!busyRef && elapsed >= TARGET_INTERVAL_MS) {
+            lastFrameTime = timestamp;
+            busyRef = true;
+            try {
+              await handsRef.current.send({ image: videoRef.current });
+            } catch {
+              // Transient send failures (e.g. during teardown) are safe to skip.
+            } finally {
+              busyRef = false;
+            }
           }
           rafRef.current = requestAnimationFrame(loop);
         };

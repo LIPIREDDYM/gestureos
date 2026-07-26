@@ -18,10 +18,17 @@ function formatTime(s: number) {
 }
 
 export function Music() {
-  const [trackIndex, setTrackIndex] = useState(0);
-  const [playing, setPlaying] = useState(true);
-  const [progress, setProgress] = useState(38);
+  const [trackIndex, setTrackIndex] = useState(() => {
+    try { return Number(localStorage.getItem("gestureos:music:track") ?? 0); } catch { return 0; }
+  });
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
   const track = PLAYLIST[trackIndex];
+
+  // Persist current track
+  useEffect(() => {
+    try { localStorage.setItem("gestureos:music:track", String(trackIndex)); } catch {/* ignore */}
+  }, [trackIndex]);
 
   useEffect(() => {
     if (!playing) return;

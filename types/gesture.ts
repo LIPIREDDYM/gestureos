@@ -30,9 +30,9 @@ export interface GestureConfig {
 }
 
 export const DEFAULT_GESTURE_CONFIG: GestureConfig = {
-  minConfidence: 0.72,
-  cooldownMs: 900,
-  pinchThreshold: 0.055,
-  swipeThreshold: 0.22,
-  swipeWindowMs: 650,
+  minConfidence: 0.62,
+  cooldownMs: 750,
+  pinchThreshold: 0.06,
+  swipeThreshold: 0.18,
+  swipeWindowMs: 700,
 };

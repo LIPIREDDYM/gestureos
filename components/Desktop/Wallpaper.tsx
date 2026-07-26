@@ -1,27 +1,139 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useEffect, useRef } from "react";
 
-/** Slow-drifting aurora blobs behind everything, purely decorative. */
+/**
+ * Dark aesthetic wallpaper:
+ * - Deep space gradient base
+ * - Animated star field (canvas, 2D only — no GPU contention with MediaPipe)
+ * - Subtle CSS aurora blobs for color
+ * - Fine grid overlay
+ * - Scan-line vignette
+ */
 export function Wallpaper() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animId: number;
+    let width = 0;
+    let height = 0;
+
+    interface Star {
+      x: number;
+      y: number;
+      r: number;
+      alpha: number;
+      speed: number;
+      twinkleOffset: number;
+    }
+
+    let stars: Star[] = [];
+
+    const resize = () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      // Re-seed stars on resize
+      stars = Array.from({ length: 180 }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        r: Math.random() * 1.4 + 0.2,
+        alpha: Math.random() * 0.6 + 0.1,
+        speed: Math.random() * 0.015 + 0.003,
+        twinkleOffset: Math.random() * Math.PI * 2,
+      }));
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+
+    let t = 0;
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      // Stars
+      t += 0.012;
+      for (const s of stars) {
+        const twinkle = s.alpha * (0.7 + 0.3 * Math.sin(t * s.speed * 80 + s.twinkleOffset));
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${twinkle.toFixed(3)})`;
+        ctx.fill();
+      }
+
+      // Occasional bright shooting star
+      if (Math.random() < 0.003) {
+        const sx = Math.random() * width;
+        const sy = Math.random() * height * 0.5;
+        const len = 60 + Math.random() * 80;
+        const grad = ctx.createLinearGradient(sx, sy, sx + len, sy + len * 0.3);
+        grad.addColorStop(0, "rgba(255,255,255,0)");
+        grad.addColorStop(0.5, "rgba(200,220,255,0.7)");
+        grad.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.beginPath();
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 1.5;
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + len, sy + len * 0.3);
+        ctx.stroke();
+      }
+
+      animId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
   return (
-    <div className="absolute inset-0 overflow-hidden bg-base-950">
-      <motion.div
-        className="absolute -left-40 -top-40 h-[560px] w-[560px] rounded-full bg-accent-blue/25 blur-[120px]"
-        animate={{ x: [0, 60, 0], y: [0, 40, 0] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+    <div className="absolute inset-0 overflow-hidden" style={{ background: "#03030a" }}>
+      {/* Star field canvas */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 h-full w-full"
+        style={{ opacity: 0.9 }}
       />
-      <motion.div
-        className="absolute -right-40 top-0 h-[520px] w-[520px] rounded-full bg-accent-purple/25 blur-[120px]"
-        animate={{ x: [0, -50, 0], y: [0, 60, 0] }}
-        transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
+
+      {/* Aurora color blobs — CSS animated, no Framer Motion */}
+      <div className="aurora-blob aurora-blue" />
+      <div className="aurora-blob aurora-purple" />
+      <div className="aurora-blob aurora-pink" />
+
+      {/* Fine grid */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
+        }}
       />
-      <motion.div
-        className="absolute bottom-[-200px] left-1/3 h-[560px] w-[560px] rounded-full bg-accent-pink/20 blur-[130px]"
-        animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
-        transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
+
+      {/* Radial vignette */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(3,3,10,0.55) 75%, rgba(3,3,10,0.85) 100%)",
+        }}
       />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(5,5,7,0.6)_100%)]" />
+
+      {/* Top scan-line shimmer */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, rgba(10,132,255,0.4) 40%, rgba(191,90,242,0.4) 60%, transparent)",
+        }}
+      />
     </div>
   );
 }

@@ -30,7 +30,7 @@ const GESTURE_META: Record<GestureType, { label: string; Icon: typeof Hand }> = 
   swipe_right: { label: "Swipe Right — Next", Icon: ArrowLeftRight },
   thumbs_up: { label: "Thumbs Up — Save", Icon: ThumbsUp },
   peace_sign: { label: "Peace Sign — Assistant", Icon: Sparkles },
-  fist: { label: "Fist", Icon: Hand },
+  fist: { label: "Fist — Close Window", Icon: Hand },
 };
 
 function cameraTone(status: CameraStatus): "success" | "warning" | "danger" | "neutral" {

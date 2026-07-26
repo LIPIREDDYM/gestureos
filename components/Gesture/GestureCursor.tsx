@@ -26,7 +26,7 @@ export function GestureCursor({ cursor, isPinching, visible }: GestureCursorProp
       className="pointer-events-none fixed z-[70]"
       style={{ left, top }}
       animate={{ left, top }}
-      transition={{ type: "tween", duration: 0.08, ease: "easeOut" }}
+      transition={{ type: "tween", duration: 0.05, ease: "linear" }}
     >
       <div className="relative -translate-x-1/2 -translate-y-1/2">
         <motion.div

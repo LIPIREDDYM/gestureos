@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Hand, ShieldAlert, Sparkles as SparklesIcon } from "lucide-react";
+import { Hand, ShieldAlert, Sparkles as SparklesIcon, HelpCircle, X } from "lucide-react";
 import { useHandTracking } from "@/hooks/useHandTracking";
 import { useGestureRecognition } from "@/hooks/useGestureRecognition";
 import { useWindowManager } from "@/hooks/useWindowManager";
@@ -17,18 +17,31 @@ import { GestureHUD } from "@/components/Gesture/GestureHUD";
 import { GestureCursor } from "@/components/Gesture/GestureCursor";
 import { GlassPanel } from "@/components/UI/GlassPanel";
 
+const GESTURE_GUIDE = [
+  { gesture: "✋ Open Palm", action: "Open / close launcher" },
+  { gesture: "🤏 Pinch", action: "Click anything" },
+  { gesture: "✌️ Peace Sign", action: "Open AI Assistant" },
+  { gesture: "👊 Fist", action: "Close active window" },
+  { gesture: "👍 Thumbs Up", action: "Save note" },
+  { gesture: "👈 Swipe Left", action: "Previous page" },
+  { gesture: "👉 Swipe Right", action: "Next page" },
+];
+
 export function Desktop() {
   const [gestureControlEnabled, setGestureControlEnabled] = useState(false);
   const [cameraMinimized, setCameraMinimized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasPinchingRef = useRef(false);
+  const pinchCursorRef = useRef<{ x: number; y: number } | null>(null);
 
   const { videoRef, cameraStatus, currentFrame, fps, errorMessage } = useHandTracking({
     enabled: gestureControlEnabled,
   });
 
-  const { openApp, toggleLauncher, setLauncherOpen, nextPage, prevPage } = useWindowManager();
+  const { openApp, toggleLauncher, setLauncherOpen, nextPage, prevPage, activeWindowId, closeWindow } =
+    useWindowManager();
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -52,33 +65,56 @@ export function Desktop() {
           nextPage();
           showToast("Next ▶");
           break;
-        case "thumbs_up":
+        case "thumbs_up": {
+          // Dispatch a custom DOM event so the focused app can react to it
+          // (e.g. Notes listens and triggers a visual save confirmation).
+          window.dispatchEvent(new CustomEvent("gestureos:thumbsup"));
           showToast("✓ Saved");
           break;
+        }
         case "peace_sign":
           openApp("assistant");
           showToast("✨ Assistant opened");
           break;
+        case "fist": {
+          const id = useWindowManager.getState().activeWindowId;
+          if (id) {
+            closeWindow(id);
+            showToast("✕ Window closed");
+          }
+          break;
+        }
         default:
           break;
       }
     },
-    [toggleLauncher, setLauncherOpen, prevPage, nextPage, openApp, showToast]
+    [toggleLauncher, setLauncherOpen, prevPage, nextPage, openApp, showToast, closeWindow]
   );
 
   const { gesture, cursor } = useGestureRecognition({ frame: currentFrame, onGesture: handleGesture });
 
-  // Pinch acts like a mouse click: on the rising edge of a pinch, translate
-  // the smoothed cursor position into real screen coordinates and simulate
-  // a native click there, so pinching over a dock icon or button "just works".
   const isPinching = gesture.type === "pinch" && gesture.confidence > 0.7;
-  if (isPinching && !wasPinchingRef.current && cursor) {
-    const screenX = (1 - cursor.x) * window.innerWidth;
-    const screenY = cursor.y * window.innerHeight;
-    const target = document.elementFromPoint(screenX, screenY) as HTMLElement | null;
-    target?.click();
-  }
-  wasPinchingRef.current = isPinching;
+
+  // Keep a ref to the latest cursor so the effect below can read it without
+  // being in the dependency array (we only want to fire on pinch edge).
+  useEffect(() => {
+    pinchCursorRef.current = cursor;
+  });
+
+  // Pinch-to-click: fire on the rising edge of a pinch. Doing this in an
+  // effect (not in render) avoids the side-effect-in-render anti-pattern.
+  useEffect(() => {
+    if (isPinching && !wasPinchingRef.current) {
+      const cur = pinchCursorRef.current;
+      if (cur) {
+        const screenX = (1 - cur.x) * window.innerWidth;
+        const screenY = cur.y * window.innerHeight;
+        const target = document.elementFromPoint(screenX, screenY) as HTMLElement | null;
+        target?.click();
+      }
+    }
+    wasPinchingRef.current = isPinching;
+  }, [isPinching]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
@@ -99,6 +135,40 @@ export function Desktop() {
             minimized={cameraMinimized}
             onToggleMinimize={() => setCameraMinimized((m) => !m)}
           />
+
+          {/* Gesture guide toggle */}
+          <button
+            onClick={() => setShowGuide((v) => !v)}
+            className="fixed bottom-24 left-6 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/60 backdrop-blur-md transition hover:bg-white/20 hover:text-white"
+            aria-label="Gesture guide"
+          >
+            {showGuide ? <X size={16} /> : <HelpCircle size={16} />}
+          </button>
+
+          <AnimatePresence>
+            {showGuide && (
+              <motion.div
+                initial={{ opacity: 0, x: -12, y: 0 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                className="fixed bottom-36 left-6 z-50"
+              >
+                <GlassPanel strong className="w-64 rounded-2xl p-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/40">
+                    Gesture Reference
+                  </p>
+                  <div className="space-y-2">
+                    {GESTURE_GUIDE.map(({ gesture: g, action }) => (
+                      <div key={g} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-white/80">{g}</span>
+                        <span className="text-right text-white/40">{action}</span>
+                      </div>
+                    ))}
+                  </div>
+                </GlassPanel>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
 

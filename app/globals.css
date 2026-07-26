@@ -25,6 +25,53 @@ body {
   background: transparent;
 }
 
+/* Aurora wallpaper blobs — CSS keyframes so they don't compete with the
+   MediaPipe WASM pipeline for GPU compositor resources. */
+@keyframes aurora-drift-1 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(60px, 40px); }
+}
+@keyframes aurora-drift-2 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-50px, 60px); }
+}
+@keyframes aurora-drift-3 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(40px, -30px); }
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(120px);
+  will-change: transform;
+}
+.aurora-blue {
+  width: 560px;
+  height: 560px;
+  top: -160px;
+  left: -160px;
+  background: rgba(10, 132, 255, 0.25);
+  animation: aurora-drift-1 22s ease-in-out infinite;
+}
+.aurora-purple {
+  width: 520px;
+  height: 520px;
+  top: 0;
+  right: -160px;
+  background: rgba(191, 90, 242, 0.25);
+  animation: aurora-drift-2 26s ease-in-out infinite;
+}
+.aurora-pink {
+  width: 560px;
+  height: 560px;
+  bottom: -200px;
+  left: 33%;
+  background: rgba(255, 55, 95, 0.20);
+  filter: blur(130px);
+  animation: aurora-drift-3 24s ease-in-out infinite;
+}
+
 @layer components {
   .glass-panel {
     @apply bg-white/[0.06] backdrop-blur-2xl border border-white/[0.12] shadow-glass;
