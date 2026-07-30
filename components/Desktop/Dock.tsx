@@ -2,13 +2,9 @@
 
 import { motion } from "framer-motion";
 import {
-  StickyNote,
-  Music2,
-  CloudSun,
-  Calculator as CalculatorIcon,
-  Image as ImageIcon,
-  Sparkles,
-  LayoutGrid,
+  StickyNote, Music2, CloudSun, Calculator as CalculatorIcon,
+  Image as ImageIcon, Sparkles, Terminal as TerminalIcon,
+  Clock, Settings as SettingsIcon, FolderOpen, LayoutGrid,
   type LucideIcon,
 } from "lucide-react";
 import { APP_REGISTRY } from "@/components/Apps/appRegistry";
@@ -16,17 +12,25 @@ import { useWindowManager } from "@/hooks/useWindowManager";
 import { GlassPanel } from "@/components/UI/GlassPanel";
 import { cn } from "@/utils/cn";
 
-const ICONS: Record<string, LucideIcon> = {
+export const ICON_MAP: Record<string, LucideIcon> = {
   StickyNote,
   Music2,
   CloudSun,
   Calculator: CalculatorIcon,
   Image: ImageIcon,
   Sparkles,
+  Terminal: TerminalIcon,
+  Clock,
+  Settings: SettingsIcon,
+  FolderOpen,
 };
+
+// Only show first 6 apps in dock to keep it clean; rest accessible via launcher
+const DOCK_APP_IDS = ["notes", "music", "weather", "calculator", "gallery", "assistant", "terminal", "clock"];
 
 export function Dock() {
   const { windows, openApp, focusWindow, toggleLauncher } = useWindowManager();
+  const dockApps = APP_REGISTRY.filter((a) => DOCK_APP_IDS.includes(a.id));
 
   return (
     <motion.div
@@ -42,8 +46,8 @@ export function Dock() {
 
         <span className="mx-1 h-9 w-px bg-white/10" />
 
-        {APP_REGISTRY.map((app) => {
-          const Icon = ICONS[app.icon] ?? Sparkles;
+        {dockApps.map((app) => {
+          const Icon = ICON_MAP[app.icon] ?? Sparkles;
           const runningWindow = windows.find((w) => w.appId === app.id);
           return (
             <DockButton
@@ -72,15 +76,9 @@ export function Dock() {
 }
 
 function DockButton({
-  children,
-  onClick,
-  label,
-  running,
+  children, onClick, label, running,
 }: {
-  children: React.ReactNode;
-  onClick: () => void;
-  label: string;
-  running?: boolean;
+  children: React.ReactNode; onClick: () => void; label: string; running?: boolean;
 }) {
   return (
     <motion.button
@@ -95,12 +93,7 @@ function DockButton({
       <span className="pointer-events-none absolute -top-9 rounded-md bg-black/70 px-2 py-1 text-[10px] text-white opacity-0 backdrop-blur-md transition group-hover:opacity-100">
         {label}
       </span>
-      <span
-        className={cn(
-          "mt-1 h-1 w-1 rounded-full transition-opacity",
-          running ? "bg-white/70 opacity-100" : "opacity-0"
-        )}
-      />
+      <span className={cn("mt-1 h-1 w-1 rounded-full transition-opacity", running ? "bg-white/70 opacity-100" : "opacity-0")} />
     </motion.button>
   );
 }

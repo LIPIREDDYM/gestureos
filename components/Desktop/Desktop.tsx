@@ -6,11 +6,17 @@ import { Hand, ShieldAlert, Sparkles as SparklesIcon, HelpCircle, X } from "luci
 import { useHandTracking } from "@/hooks/useHandTracking";
 import { useGestureRecognition } from "@/hooks/useGestureRecognition";
 import { useWindowManager } from "@/hooks/useWindowManager";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useSettings } from "@/hooks/useSettings";
 import type { GestureEvent } from "@/types/gesture";
 import { Wallpaper } from "./Wallpaper";
 import { MenuBar } from "./MenuBar";
 import { Dock } from "./Dock";
 import { Launcher } from "./Launcher";
+import { Spotlight } from "./Spotlight";
+import { NotificationCenter } from "./NotificationCenter";
+import { BootScreen } from "./BootScreen";
+import { Onboarding } from "./Onboarding";
 import { WindowManager } from "@/components/Windows/WindowManager";
 import { CameraFeed } from "@/components/Gesture/CameraFeed";
 import { GestureHUD } from "@/components/Gesture/GestureHUD";
@@ -18,29 +24,63 @@ import { GestureCursor } from "@/components/Gesture/GestureCursor";
 import { GlassPanel } from "@/components/UI/GlassPanel";
 
 const GESTURE_GUIDE = [
-  { gesture: "✋ Open Palm", action: "Open / close launcher" },
-  { gesture: "🤏 Pinch", action: "Click anything" },
-  { gesture: "✌️ Peace Sign", action: "Open AI Assistant" },
-  { gesture: "👊 Fist", action: "Close active window" },
-  { gesture: "👍 Thumbs Up", action: "Save note" },
-  { gesture: "👈 Swipe Left", action: "Previous page" },
+  { gesture: "✋ Open Palm", action: "Launcher" },
+  { gesture: "🤏 Pinch", action: "Click" },
+  { gesture: "✌️ Peace Sign", action: "Spotlight" },
+  { gesture: "👊 Fist", action: "Close window" },
+  { gesture: "👍 Thumbs Up", action: "Save" },
+  { gesture: "👈 Swipe Left", action: "Prev page" },
   { gesture: "👉 Swipe Right", action: "Next page" },
 ];
 
+// Tiny Web Audio beeps — no external files needed
+function playSound(type: "click" | "open" | "close" | "notify") {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const configs = {
+      click: { freq: 880, duration: 0.06, volume: 0.08 },
+      open: { freq: 440, duration: 0.12, volume: 0.07 },
+      close: { freq: 220, duration: 0.1, volume: 0.06 },
+      notify: { freq: 660, duration: 0.15, volume: 0.07 },
+    };
+    const c = configs[type];
+    osc.frequency.value = c.freq;
+    gain.gain.setValueAtTime(c.volume, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + c.duration);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + c.duration);
+  } catch { /* Audio not available */ }
+}
+
 export function Desktop() {
+  // Boot + onboarding
+  const [booted, setBooted] = useState(false);
+  const [onboarded, setOnboarded] = useState(() => {
+    try { return localStorage.getItem("gestureos:onboarded") === "1"; } catch { return false; }
+  });
+
   const [gestureControlEnabled, setGestureControlEnabled] = useState(false);
   const [cameraMinimized, setCameraMinimized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [spotlightOpen, setSpotlightOpen] = useState(false);
+
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasPinchingRef = useRef(false);
   const pinchCursorRef = useRef<{ x: number; y: number } | null>(null);
+
+  const settings = useSettings();
+  const { push: pushNotification } = useNotifications();
 
   const { videoRef, cameraStatus, currentFrame, fps, errorMessage } = useHandTracking({
     enabled: gestureControlEnabled,
   });
 
-  const { openApp, toggleLauncher, setLauncherOpen, nextPage, prevPage, activeWindowId, closeWindow } =
+  const { openApp, toggleLauncher, setLauncherOpen, nextPage, prevPage, closeWindow } =
     useWindowManager();
 
   const showToast = useCallback((message: string) => {
@@ -51,6 +91,8 @@ export function Desktop() {
 
   const handleGesture = useCallback(
     (event: GestureEvent) => {
+      if (settings.soundEnabled) playSound("click");
+
       switch (event.type) {
         case "open_palm":
           toggleLauncher();
@@ -65,22 +107,20 @@ export function Desktop() {
           nextPage();
           showToast("Next ▶");
           break;
-        case "thumbs_up": {
-          // Dispatch a custom DOM event so the focused app can react to it
-          // (e.g. Notes listens and triggers a visual save confirmation).
+        case "thumbs_up":
           window.dispatchEvent(new CustomEvent("gestureos:thumbsup"));
           showToast("✓ Saved");
           break;
-        }
         case "peace_sign":
-          openApp("assistant");
-          showToast("✨ Assistant opened");
+          setSpotlightOpen((v) => !v);
+          showToast("🔍 Spotlight");
           break;
         case "fist": {
           const id = useWindowManager.getState().activeWindowId;
           if (id) {
             closeWindow(id);
-            showToast("✕ Window closed");
+            showToast("✕ Closed");
+            if (settings.soundEnabled) playSound("close");
           }
           break;
         }
@@ -88,21 +128,19 @@ export function Desktop() {
           break;
       }
     },
-    [toggleLauncher, setLauncherOpen, prevPage, nextPage, openApp, showToast, closeWindow]
+    [toggleLauncher, setLauncherOpen, prevPage, nextPage, showToast, closeWindow, settings.soundEnabled]
   );
 
-  const { gesture, cursor } = useGestureRecognition({ frame: currentFrame, onGesture: handleGesture });
+  const { gesture, cursor } = useGestureRecognition({
+    frame: currentFrame,
+    onGesture: handleGesture,
+    config: { minConfidence: settings.gestureSensitivity },
+  });
 
   const isPinching = gesture.type === "pinch" && gesture.confidence > 0.7;
 
-  // Keep a ref to the latest cursor so the effect below can read it without
-  // being in the dependency array (we only want to fire on pinch edge).
-  useEffect(() => {
-    pinchCursorRef.current = cursor;
-  });
+  useEffect(() => { pinchCursorRef.current = cursor; });
 
-  // Pinch-to-click: fire on the rising edge of a pinch. Doing this in an
-  // effect (not in render) avoids the side-effect-in-render anti-pattern.
   useEffect(() => {
     if (isPinching && !wasPinchingRef.current) {
       const cur = pinchCursorRef.current;
@@ -111,22 +149,72 @@ export function Desktop() {
         const screenY = cur.y * window.innerHeight;
         const target = document.elementFromPoint(screenX, screenY) as HTMLElement | null;
         target?.click();
+        if (settings.soundEnabled) playSound("click");
       }
     }
     wasPinchingRef.current = isPinching;
-  }, [isPinching]);
+  }, [isPinching, settings.soundEnabled]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === " ") {
+        e.preventDefault();
+        setSpotlightOpen((v) => !v);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "l") {
+        e.preventDefault();
+        toggleLauncher();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleLauncher]);
+
+  // Push a welcome notification after boot
+  useEffect(() => {
+    if (booted) {
+      setTimeout(() => {
+        pushNotification({
+          title: "Welcome to GestureOS",
+          body: "Enable gesture control to start using hand gestures.",
+          icon: "✋",
+        });
+      }, 1500);
+    }
+  }, [booted, pushNotification]);
+
+  // Notify when gesture control connects
+  useEffect(() => {
+    if (cameraStatus === "streaming") {
+      pushNotification({ title: "Camera connected", body: "Hand tracking is now active.", icon: "📷" });
+      if (settings.soundEnabled) playSound("notify");
+    }
+  }, [cameraStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const completeOnboarding = () => {
+    setOnboarded(true);
+    try { localStorage.setItem("gestureos:onboarded", "1"); } catch { /* ignore */ }
+  };
+
+  if (!booted) return <BootScreen onComplete={() => setBooted(true)} />;
+  if (!onboarded) return <Onboarding onComplete={completeOnboarding} />;
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
-      <Wallpaper />
-      <MenuBar />
+      <Wallpaper theme={settings.wallpaperTheme} />
+      <MenuBar onSpotlight={() => setSpotlightOpen((v) => !v)} />
       <WindowManager />
       <Launcher />
       <Dock />
+      <NotificationCenter />
+      <Spotlight open={spotlightOpen} onClose={() => setSpotlightOpen(false)} />
 
       {gestureControlEnabled && (
         <>
-          <GestureHUD gesture={gesture} cameraStatus={cameraStatus} fps={fps} handDetected={!!currentFrame} />
+          {settings.showFPS && (
+            <GestureHUD gesture={gesture} cameraStatus={cameraStatus} fps={fps} handDetected={!!currentFrame} />
+          )}
           <GestureCursor cursor={gesture.cursor} isPinching={isPinching} visible={cameraStatus === "streaming"} />
           <CameraFeed
             videoRef={videoRef}
@@ -136,7 +224,6 @@ export function Desktop() {
             onToggleMinimize={() => setCameraMinimized((m) => !m)}
           />
 
-          {/* Gesture guide toggle */}
           <button
             onClick={() => setShowGuide((v) => !v)}
             className="fixed bottom-24 left-6 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/60 backdrop-blur-md transition hover:bg-white/20 hover:text-white"
@@ -148,20 +235,18 @@ export function Desktop() {
           <AnimatePresence>
             {showGuide && (
               <motion.div
-                initial={{ opacity: 0, x: -12, y: 0 }}
+                initial={{ opacity: 0, x: -12 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -12 }}
                 className="fixed bottom-36 left-6 z-50"
               >
-                <GlassPanel strong className="w-64 rounded-2xl p-4">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/40">
-                    Gesture Reference
-                  </p>
+                <GlassPanel strong className="w-56 rounded-2xl p-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/40">Gestures</p>
                   <div className="space-y-2">
                     {GESTURE_GUIDE.map(({ gesture: g, action }) => (
                       <div key={g} className="flex items-center justify-between gap-2 text-xs">
                         <span className="text-white/80">{g}</span>
-                        <span className="text-right text-white/40">{action}</span>
+                        <span className="text-white/40">{action}</span>
                       </div>
                     ))}
                   </div>

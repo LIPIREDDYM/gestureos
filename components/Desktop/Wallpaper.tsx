@@ -1,17 +1,34 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { WallpaperTheme } from "@/hooks/useSettings";
 
-/**
- * Dark aesthetic wallpaper:
- * - Deep space gradient base
- * - Animated star field (canvas, 2D only — no GPU contention with MediaPipe)
- * - Subtle CSS aurora blobs for color
- * - Fine grid overlay
- * - Scan-line vignette
- */
-export function Wallpaper() {
+interface WallpaperProps {
+  theme?: WallpaperTheme;
+}
+
+const THEME_COLORS: Record<WallpaperTheme, { base: string; blobs: [string, string, string] }> = {
+  space: {
+    base: "#03030a",
+    blobs: ["rgba(10,132,255,0.22)", "rgba(191,90,242,0.22)", "rgba(255,55,95,0.16)"],
+  },
+  cyberpunk: {
+    base: "#0d0006",
+    blobs: ["rgba(255,0,128,0.22)", "rgba(0,255,200,0.18)", "rgba(120,0,255,0.18)"],
+  },
+  forest: {
+    base: "#030f05",
+    blobs: ["rgba(48,209,88,0.20)", "rgba(100,210,255,0.16)", "rgba(10,132,255,0.14)"],
+  },
+  ocean: {
+    base: "#03080f",
+    blobs: ["rgba(10,132,255,0.24)", "rgba(100,210,255,0.20)", "rgba(48,209,88,0.14)"],
+  },
+};
+
+export function Wallpaper({ theme = "space" }: WallpaperProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const colors = THEME_COLORS[theme];
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -24,12 +41,8 @@ export function Wallpaper() {
     let height = 0;
 
     interface Star {
-      x: number;
-      y: number;
-      r: number;
-      alpha: number;
-      speed: number;
-      twinkleOffset: number;
+      x: number; y: number; r: number;
+      alpha: number; speed: number; twinkleOffset: number;
     }
 
     let stars: Star[] = [];
@@ -37,12 +50,11 @@ export function Wallpaper() {
     const resize = () => {
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
-      // Re-seed stars on resize
-      stars = Array.from({ length: 180 }, () => ({
+      stars = Array.from({ length: 200 }, () => ({
         x: Math.random() * width,
         y: Math.random() * height,
         r: Math.random() * 1.4 + 0.2,
-        alpha: Math.random() * 0.6 + 0.1,
+        alpha: Math.random() * 0.65 + 0.1,
         speed: Math.random() * 0.015 + 0.003,
         twinkleOffset: Math.random() * Math.PI * 2,
       }));
@@ -54,9 +66,8 @@ export function Wallpaper() {
     let t = 0;
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
-
-      // Stars
       t += 0.012;
+
       for (const s of stars) {
         const twinkle = s.alpha * (0.7 + 0.3 * Math.sin(t * s.speed * 80 + s.twinkleOffset));
         ctx.beginPath();
@@ -65,14 +76,14 @@ export function Wallpaper() {
         ctx.fill();
       }
 
-      // Occasional bright shooting star
+      // Occasional shooting star
       if (Math.random() < 0.003) {
         const sx = Math.random() * width;
         const sy = Math.random() * height * 0.5;
-        const len = 60 + Math.random() * 80;
+        const len = 60 + Math.random() * 90;
         const grad = ctx.createLinearGradient(sx, sy, sx + len, sy + len * 0.3);
         grad.addColorStop(0, "rgba(255,255,255,0)");
-        grad.addColorStop(0.5, "rgba(200,220,255,0.7)");
+        grad.addColorStop(0.5, "rgba(210,230,255,0.75)");
         grad.addColorStop(1, "rgba(255,255,255,0)");
         ctx.beginPath();
         ctx.strokeStyle = grad;
@@ -86,53 +97,38 @@ export function Wallpaper() {
     };
 
     draw();
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener("resize", resize);
-    };
+    return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
   }, []);
 
   return (
-    <div className="absolute inset-0 overflow-hidden" style={{ background: "#03030a" }}>
-      {/* Star field canvas */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 h-full w-full"
-        style={{ opacity: 0.9 }}
-      />
+    <div className="absolute inset-0 overflow-hidden" style={{ background: colors.base }}>
+      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full opacity-90" />
 
-      {/* Aurora color blobs — CSS animated, no Framer Motion */}
-      <div className="aurora-blob aurora-blue" />
-      <div className="aurora-blob aurora-purple" />
-      <div className="aurora-blob aurora-pink" />
+      {/* Theme-colored aurora blobs */}
+      <div className="aurora-blob aurora-blue" style={{ background: colors.blobs[0] }} />
+      <div className="aurora-blob aurora-purple" style={{ background: colors.blobs[1] }} />
+      <div className="aurora-blob aurora-pink" style={{ background: colors.blobs[2] }} />
 
-      {/* Fine grid */}
+      {/* Grid */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
+            "linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
         }}
       />
-
-      {/* Radial vignette */}
+      {/* Vignette */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          background:
-            "radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(3,3,10,0.55) 75%, rgba(3,3,10,0.85) 100%)",
+          background: `radial-gradient(ellipse at 50% 40%, transparent 30%, ${colors.base}88 75%, ${colors.base}dd 100%)`,
         }}
       />
-
-      {/* Top scan-line shimmer */}
+      {/* Top scan line */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-px"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, rgba(10,132,255,0.4) 40%, rgba(191,90,242,0.4) 60%, transparent)",
-        }}
+        style={{ background: `linear-gradient(90deg, transparent, ${colors.blobs[0]} 40%, ${colors.blobs[1]} 60%, transparent)` }}
       />
     </div>
   );

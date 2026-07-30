@@ -3,29 +3,18 @@
 import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  StickyNote,
-  Music2,
-  CloudSun,
-  Calculator as CalculatorIcon,
-  Image as ImageIcon,
-  Sparkles,
-  X,
+  StickyNote, Music2, CloudSun, Calculator as CalculatorIcon,
+  Image as ImageIcon, Sparkles, Terminal as TerminalIcon,
+  Clock, Settings as SettingsIcon, FolderOpen, X,
   type LucideIcon,
 } from "lucide-react";
 import { APP_REGISTRY } from "@/components/Apps/appRegistry";
 import { useWindowManager } from "@/hooks/useWindowManager";
+import { useSettings } from "@/hooks/useSettings";
 import { GlassPanel } from "@/components/UI/GlassPanel";
+import { ICON_MAP } from "./Dock";
 
-const ICONS: Record<string, LucideIcon> = {
-  StickyNote,
-  Music2,
-  CloudSun,
-  Calculator: CalculatorIcon,
-  Image: ImageIcon,
-  Sparkles,
-};
-
-const DWELL_MS = 1200; // hover this long to auto-launch via gesture cursor
+const DWELL_MS = 1200; // will be overridden by settings in DwellButton
 
 /**
  * DwellButton — wraps each app tile and auto-fires onClick after the user
@@ -36,10 +25,12 @@ function DwellButton({
   children,
   onClick,
   className,
+  dwellMs = 1200,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   className?: string;
+  dwellMs?: number;
 }) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dwellProgress, setDwellProgress] = useState(0);
@@ -50,7 +41,7 @@ function DwellButton({
     startTimeRef.current = performance.now();
     const tick = () => {
       const elapsed = performance.now() - (startTimeRef.current ?? 0);
-      const progress = Math.min(elapsed / DWELL_MS, 1);
+      const progress = Math.min(elapsed / dwellMs, 1);
       setDwellProgress(progress);
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(tick);
@@ -110,6 +101,7 @@ function DwellButton({
 
 export function Launcher() {
   const { isLauncherOpen, setLauncherOpen, openApp } = useWindowManager();
+  const { dwellTime } = useSettings();
 
   return (
     <AnimatePresence>
@@ -166,12 +158,13 @@ export function Launcher() {
               {/* App grid */}
               <div className="grid grid-cols-3 gap-3">
                 {APP_REGISTRY.map((app, i) => {
-                  const Icon = ICONS[app.icon] ?? Sparkles;
+                  const Icon = ICON_MAP[app.icon] ?? Sparkles;
                   return (
                     <DwellButton
                       key={app.id}
                       onClick={() => openApp(app.id)}
                       className="rounded-2xl"
+                      dwellMs={dwellTime}
                     >
                       <motion.button
                         initial={{ opacity: 0, y: 14 }}

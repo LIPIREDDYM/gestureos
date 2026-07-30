@@ -5,12 +5,11 @@ import { Weather } from "./Weather";
 import { Calculator } from "./Calculator";
 import { Gallery } from "./Gallery";
 import { AIAssistant } from "./AIAssistant";
+import { Terminal } from "./Terminal";
+import { Clock } from "./Clock";
+import { Settings } from "./Settings";
+import { Files } from "./Files";
 
-/**
- * Single source of truth for every app in GestureOS. The Dock, Launcher and
- * WindowManager all read from this list — add a new app by adding one entry
- * here (and its component file) and it appears everywhere automatically.
- */
 export const APP_REGISTRY: AppDefinition[] = [
   {
     id: "notes",
@@ -59,5 +58,37 @@ export const APP_REGISTRY: AppDefinition[] = [
     accent: "from-accent-purple to-accent-pink",
     defaultSize: { width: 400, height: 560 },
     component: AIAssistant,
+  },
+  {
+    id: "terminal",
+    title: "Terminal",
+    icon: "Terminal",
+    accent: "from-accent-green/80 to-base-900",
+    defaultSize: { width: 520, height: 380 },
+    component: Terminal,
+  },
+  {
+    id: "clock",
+    title: "Clock",
+    icon: "Clock",
+    accent: "from-accent-blue/70 to-accent-teal/70",
+    defaultSize: { width: 360, height: 540 },
+    component: Clock,
+  },
+  {
+    id: "settings",
+    title: "Settings",
+    icon: "Settings",
+    accent: "from-white/30 to-white/10",
+    defaultSize: { width: 420, height: 500 },
+    component: Settings,
+  },
+  {
+    id: "files",
+    title: "Files",
+    icon: "FolderOpen",
+    accent: "from-accent-amber/70 to-accent-green/70",
+    defaultSize: { width: 500, height: 420 },
+    component: Files,
   },
 ];
