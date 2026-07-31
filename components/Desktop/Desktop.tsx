@@ -78,6 +78,8 @@ export function Desktop() {
 
   const { videoRef, cameraStatus, currentFrame, fps, errorMessage } = useHandTracking({
     enabled: gestureControlEnabled,
+    modelComplexity: settings.modelComplexity,
+    cameraResolution: settings.cameraResolution,
   });
 
   const { openApp, toggleLauncher, setLauncherOpen, nextPage, prevPage, closeWindow } =
@@ -107,10 +109,6 @@ export function Desktop() {
           nextPage();
           showToast("Next ▶");
           break;
-        case "thumbs_up":
-          window.dispatchEvent(new CustomEvent("gestureos:thumbsup"));
-          showToast("✓ Saved");
-          break;
         case "peace_sign":
           setSpotlightOpen((v) => !v);
           showToast("🔍 Spotlight");
@@ -124,6 +122,14 @@ export function Desktop() {
           }
           break;
         }
+        case "thumbs_up":
+          window.dispatchEvent(new CustomEvent("gestureos:thumbsup"));
+          // Also trigger Mission Control if no windows open
+          if (useWindowManager.getState().windows.length === 0) {
+            window.dispatchEvent(new CustomEvent("gestureos:missioncontrol"));
+          }
+          showToast("✓ Saved");
+          break;
         default:
           break;
       }

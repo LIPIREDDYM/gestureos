@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Folder, FolderOpen, FileText, Music2, Image as ImageIcon,
-  ChevronRight, Plus, Trash2, MoreHorizontal,
+  ChevronRight, Plus, Trash2,
 } from "lucide-react";
 
 interface FSItem {
@@ -46,8 +46,17 @@ function getIcon(item: FSItem) {
   return <FileText size={16} className="text-accent-blue" />;
 }
 
-function FileRow({ item, depth, onSelect, selected }: {
-  item: FSItem; depth: number; onSelect: (id: string) => void; selected: string | null;
+function deleteItem(items: FSItem[], id: string): FSItem[] {
+  return items
+    .filter((item) => item.id !== id)
+    .map((item) =>
+      item.children ? { ...item, children: deleteItem(item.children, id) } : item
+    );
+}
+
+function FileRow({ item, depth, onSelect, selected, onDelete }: {
+  item: FSItem; depth: number; onSelect: (id: string) => void;
+  selected: string | null; onDelete: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const isSelected = selected === item.id;
@@ -56,7 +65,7 @@ function FileRow({ item, depth, onSelect, selected }: {
     <>
       <button
         onClick={() => { onSelect(item.id); if (item.type === "folder") setOpen((o) => !o); }}
-        className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition ${isSelected ? "bg-white/10" : "hover:bg-white/[0.04]"}`}
+        className={`group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition ${isSelected ? "bg-white/10" : "hover:bg-white/[0.04]"}`}
         style={{ paddingLeft: `${8 + depth * 16}px` }}
       >
         {item.type === "folder" && (
@@ -66,17 +75,18 @@ function FileRow({ item, depth, onSelect, selected }: {
         {getIcon(item)}
         <span className="flex-1 truncate text-white/80">{item.name}</span>
         {item.size && <span className="text-white/30">{item.size}</span>}
-        {item.modified && <span className="text-white/20">{item.modified}</span>}
+        {item.modified && <span className="mr-1 text-white/20">{item.modified}</span>}
+        <Trash2
+          size={11}
+          className="shrink-0 text-white/20 opacity-0 transition hover:text-accent-pink group-hover:opacity-100"
+          onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+        />
       </button>
       {item.type === "folder" && open && item.children && (
         <AnimatePresence>
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-          >
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
             {item.children.map((child) => (
-              <FileRow key={child.id} item={child} depth={depth + 1} onSelect={onSelect} selected={selected} />
+              <FileRow key={child.id} item={child} depth={depth + 1} onSelect={onSelect} selected={selected} onDelete={onDelete} />
             ))}
           </motion.div>
         </AnimatePresence>
@@ -89,6 +99,11 @@ export function Files() {
   const [fs, setFs] = useState<FSItem[]>(INITIAL_FS);
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "grid">("list");
+
+  const handleDelete = (id: string) => {
+    setFs((prev) => deleteItem(prev, id));
+    if (selected === id) setSelected(null);
+  };
 
   const allFiles = fs.flatMap((item) =>
     item.type === "file" ? [item] : (item.children ?? [])
@@ -124,7 +139,7 @@ export function Files() {
             <span className="w-16 text-right">Modified</span>
           </div>
           {fs.map((item) => (
-            <FileRow key={item.id} item={item} depth={0} onSelect={setSelected} selected={selected} />
+            <FileRow key={item.id} item={item} depth={0} onSelect={setSelected} selected={selected} onDelete={handleDelete} />
           ))}
         </div>
       ) : (

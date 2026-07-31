@@ -29,7 +29,7 @@ const GESTURE_META: Record<GestureType, { label: string; Icon: typeof Hand }> = 
   swipe_left: { label: "Swipe Left — Previous", Icon: ArrowLeftRight },
   swipe_right: { label: "Swipe Right — Next", Icon: ArrowLeftRight },
   thumbs_up: { label: "Thumbs Up — Save", Icon: ThumbsUp },
-  peace_sign: { label: "Peace Sign — Assistant", Icon: Sparkles },
+  peace_sign: { label: "Peace Sign — Spotlight", Icon: Sparkles },
   fist: { label: "Fist — Close Window", Icon: Hand },
 };
 

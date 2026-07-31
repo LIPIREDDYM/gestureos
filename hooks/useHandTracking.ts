@@ -3,9 +3,16 @@ import type { CameraStatus, HandFrame } from "@/types/hand";
 import { loadHands, toHandFrame, type MpHandsInstance } from "@/lib/mediapipe/handsSetup";
 import { useFPS } from "./useFPS";
 
+const RES_MAP = {
+  "480p": { width: 640, height: 480 },
+  "720p": { width: 960, height: 720 },
+  "1080p": { width: 1920, height: 1080 },
+};
+
 interface UseHandTrackingOptions {
-  /** Master on/off switch, e.g. tied to a "camera enabled" toggle in the UI. */
   enabled: boolean;
+  modelComplexity?: 0 | 1;
+  cameraResolution?: "480p" | "720p" | "1080p";
 }
 
 interface UseHandTrackingReturn {
@@ -16,12 +23,11 @@ interface UseHandTrackingReturn {
   errorMessage: string | null;
 }
 
-/**
- * Owns the full pipeline: webcam -> MediaPipe Hands -> normalized HandFrame.
- * Exposes the latest frame as state so downstream hooks/components can
- * derive gestures and render overlays from it.
- */
-export function useHandTracking({ enabled }: UseHandTrackingOptions): UseHandTrackingReturn {
+export function useHandTracking({
+  enabled,
+  modelComplexity = 0,
+  cameraResolution = "720p",
+}: UseHandTrackingOptions): UseHandTrackingReturn {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const handsRef = useRef<MpHandsInstance | null>(null);
@@ -32,8 +38,6 @@ export function useHandTracking({ enabled }: UseHandTrackingOptions): UseHandTra
   const [currentFrame, setCurrentFrame] = useState<HandFrame | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { fps, tick } = useFPS();
-  // Keep tick in a ref so the onResults callback never needs to be
-  // re-registered when tick's identity changes between renders.
   const tickRef = useRef(tick);
   useEffect(() => { tickRef.current = tick; });
 
@@ -56,6 +60,7 @@ export function useHandTracking({ enabled }: UseHandTrackingOptions): UseHandTra
 
     cancelledRef.current = false;
     let localStream: MediaStream | null = null;
+    const res = RES_MAP[cameraResolution];
 
     async function start() {
       try {
@@ -67,13 +72,10 @@ export function useHandTracking({ enabled }: UseHandTrackingOptions): UseHandTra
         }
 
         localStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 960, height: 720, facingMode: "user" },
+          video: { width: res.width, height: res.height, facingMode: "user" },
           audio: false,
         });
-        if (cancelledRef.current) {
-          localStream.getTracks().forEach((t) => t.stop());
-          return;
-        }
+        if (cancelledRef.current) { localStream.getTracks().forEach((t) => t.stop()); return; }
         streamRef.current = localStream;
         setCameraStatus("granted");
 
@@ -82,7 +84,8 @@ export function useHandTracking({ enabled }: UseHandTrackingOptions): UseHandTra
         video.srcObject = localStream;
         await video.play();
 
-        const hands = await loadHands();
+        // Pass modelComplexity so it actually takes effect
+        const hands = await loadHands(modelComplexity);
         if (cancelledRef.current) return;
         handsRef.current = hands;
 
@@ -94,27 +97,18 @@ export function useHandTracking({ enabled }: UseHandTrackingOptions): UseHandTra
 
         setCameraStatus("streaming");
 
-        // Cap at ~30 fps by skipping frames when MediaPipe is still
-        // processing. Without this, frames pile up in the microtask queue
-        // and the pipeline gets progressively laggier over time.
         let busyRef = false;
         let lastFrameTime = 0;
-        const TARGET_INTERVAL_MS = 1000 / 30; // ~33 ms per frame
+        const TARGET_INTERVAL_MS = 1000 / 30;
 
         const loop = async (timestamp: number) => {
           if (cancelledRef.current || !handsRef.current || !videoRef.current) return;
-
           const elapsed = timestamp - lastFrameTime;
           if (!busyRef && elapsed >= TARGET_INTERVAL_MS) {
             lastFrameTime = timestamp;
             busyRef = true;
-            try {
-              await handsRef.current.send({ image: videoRef.current });
-            } catch {
-              // Transient send failures (e.g. during teardown) are safe to skip.
-            } finally {
-              busyRef = false;
-            }
+            try { await handsRef.current.send({ image: videoRef.current }); } catch { /* skip */ }
+            finally { busyRef = false; }
           }
           rafRef.current = requestAnimationFrame(loop);
         };
@@ -122,8 +116,7 @@ export function useHandTracking({ enabled }: UseHandTrackingOptions): UseHandTra
       } catch (err) {
         if (cancelledRef.current) return;
         const message = err instanceof Error ? err.message : "Unknown camera error.";
-        const isPermissionError =
-          err instanceof DOMException &&
+        const isPermissionError = err instanceof DOMException &&
           (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
         setCameraStatus(isPermissionError ? "denied" : "error");
         setErrorMessage(message);
@@ -141,7 +134,7 @@ export function useHandTracking({ enabled }: UseHandTrackingOptions): UseHandTra
       streamRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+  }, [enabled, modelComplexity, cameraResolution]);
 
   return { videoRef, cameraStatus, currentFrame, fps, errorMessage };
 }

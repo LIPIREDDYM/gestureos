@@ -29,7 +29,7 @@ const STEPS = [
   {
     emoji: "✌️",
     title: "Peace Sign",
-    subtitle: "Open AI Assistant",
+    subtitle: "Open Spotlight Search",
     description: "Extend your index and middle fingers in a V shape. Keep ring and pinky fingers curled.",
     tip: "Spread the two fingers apart for better detection",
     color: "from-accent-teal to-accent-blue",

@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-export type AppId = "notes" | "music" | "weather" | "calculator" | "gallery" | "assistant" | "terminal" | "clock" | "settings" | "files";
+export type AppId = "notes" | "music" | "weather" | "calculator" | "gallery" | "assistant" | "terminal" | "clock" | "settings" | "files" | "sketch";
 
 export interface AppDefinition {
   id: AppId;

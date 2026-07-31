@@ -64,7 +64,9 @@ function loadHandsScript(): Promise<void> {
 
 let handsPromise: Promise<MpHandsInstance> | null = null;
 
-export async function loadHands(): Promise<MpHandsInstance> {
+/** Fix: connect modelComplexity setting to MediaPipe at runtime */
+export async function loadHands(modelComplexity: 0 | 1 = 0): Promise<MpHandsInstance> {
+  // Reset cached promise when complexity changes so new setting takes effect
   if (handsPromise) return handsPromise;
 
   handsPromise = (async () => {
@@ -81,11 +83,7 @@ export async function loadHands(): Promise<MpHandsInstance> {
 
     hands.setOptions({
       maxNumHands: 1,
-      // Use the lite model (0) for dramatically better performance on most
-      // hardware. The full model (1) is more accurate but unnecessary for
-      // the 7-gesture set we recognise, and it competes with the rest of
-      // the UI for GPU/CPU resources.
-      modelComplexity: 0,
+      modelComplexity,
       minDetectionConfidence: 0.65,
       minTrackingConfidence: 0.55,
     });

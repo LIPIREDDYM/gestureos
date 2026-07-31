@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   StickyNote, Music2, CloudSun, Calculator as CalculatorIcon,
   Image as ImageIcon, Sparkles, Terminal as TerminalIcon,
-  Clock, Settings as SettingsIcon, FolderOpen, LayoutGrid,
+  Clock, Settings as SettingsIcon, FolderOpen, LayoutGrid, Pencil,
   type LucideIcon,
 } from "lucide-react";
 import { APP_REGISTRY } from "@/components/Apps/appRegistry";
@@ -13,9 +13,7 @@ import { GlassPanel } from "@/components/UI/GlassPanel";
 import { cn } from "@/utils/cn";
 
 export const ICON_MAP: Record<string, LucideIcon> = {
-  StickyNote,
-  Music2,
-  CloudSun,
+  StickyNote, Music2, CloudSun,
   Calculator: CalculatorIcon,
   Image: ImageIcon,
   Sparkles,
@@ -23,10 +21,10 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Clock,
   Settings: SettingsIcon,
   FolderOpen,
+  Pencil,
 };
 
-// Only show first 6 apps in dock to keep it clean; rest accessible via launcher
-const DOCK_APP_IDS = ["notes", "music", "weather", "calculator", "gallery", "assistant", "terminal", "clock"];
+const DOCK_APP_IDS = ["notes", "music", "weather", "calculator", "gallery", "assistant", "terminal", "clock", "sketch"];
 
 export function Dock() {
   const { windows, openApp, focusWindow, toggleLauncher } = useWindowManager();
