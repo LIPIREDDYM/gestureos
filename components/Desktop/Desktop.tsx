@@ -21,6 +21,8 @@ import { WindowManager } from "@/components/Windows/WindowManager";
 import { CameraFeed } from "@/components/Gesture/CameraFeed";
 import { GestureHUD } from "@/components/Gesture/GestureHUD";
 import { GestureCursor } from "@/components/Gesture/GestureCursor";
+import { QuickNote } from "./QuickNote";
+import { GestureScorePanel } from "@/components/Gesture/GestureScorePanel";
 import { GlassPanel } from "@/components/UI/GlassPanel";
 
 const GESTURE_GUIDE = [
@@ -67,6 +69,7 @@ export function Desktop() {
   const [cameraMinimized, setCameraMinimized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [showScores, setShowScores] = useState(false);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -238,6 +241,50 @@ export function Desktop() {
             {showGuide ? <X size={16} /> : <HelpCircle size={16} />}
           </button>
 
+          {/* Tile windows button */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("gestureos:tilewindows"))}
+            className="fixed bottom-24 left-16 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/60 backdrop-blur-md transition hover:bg-white/20 hover:text-white"
+            aria-label="Tile windows"
+            title="Tile windows (Ctrl+\)"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+              <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+              <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+              <rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+            </svg>
+          </button>
+
+          {/* Quick note toggle */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("gestureos:quicknote"))}
+            className="fixed bottom-24 left-[6.5rem] z-50 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/60 backdrop-blur-md transition hover:bg-white/20 hover:text-white"
+            aria-label="Quick note"
+            title="Quick note"
+          >
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+              <rect x="1" y="1" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.2"/>
+              <line x1="4" y1="5" x2="11" y2="5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+              <line x1="4" y1="7.5" x2="11" y2="7.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+              <line x1="4" y1="10" x2="8" y2="10" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+            </svg>
+          </button>
+
+          {/* Gesture score panel toggle */}
+          <button
+            onClick={() => setShowScores((v) => !v)}
+            className="fixed bottom-24 left-48 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/60 backdrop-blur-md transition hover:bg-white/20 hover:text-white"
+            aria-label="Gesture scores"
+            title="Live gesture scores"
+          >
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+              <rect x="1" y="8" width="3" height="6" rx="1" fill="currentColor" opacity="0.5"/>
+              <rect x="6" y="5" width="3" height="9" rx="1" fill="currentColor" opacity="0.7"/>
+              <rect x="11" y="2" width="3" height="12" rx="1" fill="currentColor"/>
+            </svg>
+          </button>
+
           <AnimatePresence>
             {showGuide && (
               <motion.div
@@ -260,6 +307,23 @@ export function Desktop() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Live gesture score heatmap */}
+          <AnimatePresence>
+            {showScores && (
+              <motion.div
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                className="fixed bottom-36 left-48 z-50"
+              >
+                <GestureScorePanel frame={currentFrame} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Always-on quick note widget */}
+          <QuickNote />
         </>
       )}
 
