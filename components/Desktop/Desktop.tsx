@@ -23,6 +23,7 @@ import { GestureHUD } from "@/components/Gesture/GestureHUD";
 import { GestureCursor } from "@/components/Gesture/GestureCursor";
 import { QuickNote } from "./QuickNote";
 import { GestureScorePanel } from "@/components/Gesture/GestureScorePanel";
+import { WidgetBar } from "./WidgetBar";
 import { GlassPanel } from "@/components/UI/GlassPanel";
 
 const GESTURE_GUIDE = [
@@ -148,7 +149,39 @@ export function Desktop() {
 
   const isPinching = gesture.type === "pinch" && gesture.confidence > 0.7;
 
-  useEffect(() => { pinchCursorRef.current = cursor; });
+  // Vertical scroll gesture: index+middle extended moving vertically → scroll active window
+  const scrollHistoryRef = useRef<{ y: number; t: number }[]>([]);
+  useEffect(() => {
+    if (!currentFrame) { scrollHistoryRef.current = []; return; }
+    const fingers = currentFrame ? (() => {
+      // inline finger check
+      const lm = currentFrame.landmarks;
+      const wristY = lm[0].y;
+      const indexUp = lm[8].y < lm[6].y;
+      const middleUp = lm[12].y < lm[10].y;
+      const ringDown = lm[16].y > lm[14].y;
+      const pinkyDown = lm[20].y > lm[18].y;
+      return indexUp && middleUp && ringDown && pinkyDown;
+    })() : false;
+
+    if (!fingers) { scrollHistoryRef.current = []; return; }
+
+    const now = currentFrame.timestamp;
+    const midY = (currentFrame.landmarks[8].y + currentFrame.landmarks[12].y) / 2;
+    const hist = scrollHistoryRef.current;
+    hist.push({ y: midY, t: now });
+    while (hist.length > 0 && now - hist[0].t > 300) hist.shift();
+
+    if (hist.length >= 3) {
+      const dy = hist[hist.length - 1].y - hist[0].y;
+      const speed = Math.abs(dy) / ((hist[hist.length - 1].t - hist[0].t) / 1000);
+      if (Math.abs(dy) > 0.04 && speed > 0.15) {
+        const el = document.querySelector("[data-scroll-target]") ?? document.activeElement;
+        if (el) (el as HTMLElement).scrollBy({ top: dy * 600, behavior: "smooth" });
+        scrollHistoryRef.current = [];
+      }
+    }
+  }, [currentFrame]);
 
   useEffect(() => {
     if (isPinching && !wasPinchingRef.current) {
@@ -218,6 +251,7 @@ export function Desktop() {
       <Dock />
       <NotificationCenter />
       <Spotlight open={spotlightOpen} onClose={() => setSpotlightOpen(false)} />
+      <WidgetBar fps={fps} handDetected={!!currentFrame} gestureEnabled={gestureControlEnabled} />
 
       {gestureControlEnabled && (
         <>

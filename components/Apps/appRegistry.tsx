@@ -13,6 +13,9 @@ import { Sketch } from "./Sketch";
 import { Pomodoro } from "./Pomodoro";
 import { Habits } from "./Habits";
 import { Markdown } from "./Markdown";
+import { Expense } from "./Expense";
+import { GestureTrainer } from "./GestureTrainer";
+import { ColorPicker } from "./ColorPicker";
 
 export const APP_REGISTRY: AppDefinition[] = [
   { id: "notes",     title: "Notes",     icon: "StickyNote", accent: "from-accent-amber to-accent-pink",     defaultSize: { width: 560, height: 420 }, component: Notes },
@@ -28,5 +31,8 @@ export const APP_REGISTRY: AppDefinition[] = [
   { id: "sketch",    title: "Sketch",    icon: "Pencil",     accent: "from-accent-pink/70 to-accent-purple/70",defaultSize: { width: 580, height: 460 }, component: Sketch },
   { id: "pomodoro",  title: "Pomodoro",  icon: "Timer",      accent: "from-accent-blue to-accent-teal",      defaultSize: { width: 340, height: 500 }, component: Pomodoro },
   { id: "habits",    title: "Habits",    icon: "CheckSquare",accent: "from-accent-green to-accent-blue",     defaultSize: { width: 560, height: 460 }, component: Habits },
-  { id: "markdown",  title: "Markdown",  icon: "FileText",   accent: "from-white/20 to-white/5",             defaultSize: { width: 540, height: 480 }, component: Markdown },
+  { id: "markdown",    title: "Markdown",     icon: "FileText",    accent: "from-white/20 to-white/5",               defaultSize: { width: 540, height: 480 }, component: Markdown },
+  { id: "expense",     title: "Expenses",     icon: "Wallet",      accent: "from-accent-green to-accent-teal",       defaultSize: { width: 420, height: 520 }, component: Expense },
+  { id: "trainer",     title: "Trainer",      icon: "Dumbbell",    accent: "from-accent-purple to-accent-blue",      defaultSize: { width: 380, height: 520 }, component: GestureTrainer },
+  { id: "colorpicker", title: "Colors",       icon: "Pipette",     accent: "from-accent-pink to-accent-amber",       defaultSize: { width: 340, height: 520 }, component: ColorPicker },
 ];
