@@ -113,6 +113,7 @@ export function Window({ win, isActive }: WindowProps) {
           "glass-panel-strong flex flex-col overflow-hidden rounded-2xl",
           isActive ? "ring-1 ring-white/25" : "ring-1 ring-white/5"
         )}
+        data-window="true"
       >
         <div
           onPointerDown={(e) => dragControls.start(e)}

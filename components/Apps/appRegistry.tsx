@@ -16,6 +16,12 @@ import { Markdown } from "./Markdown";
 import { Expense } from "./Expense";
 import { GestureTrainer } from "./GestureTrainer";
 import { ColorPicker } from "./ColorPicker";
+import { Kanban } from "./Kanban";
+import { Visualizer } from "./Visualizer";
+import { Vault } from "./Vault";
+import { RSS } from "./RSS";
+import { Flashcards } from "./Flashcards";
+import { AppUsage } from "./AppUsage";
 
 export const APP_REGISTRY: AppDefinition[] = [
   { id: "notes",     title: "Notes",     icon: "StickyNote", accent: "from-accent-amber to-accent-pink",     defaultSize: { width: 560, height: 420 }, component: Notes },
@@ -35,4 +41,10 @@ export const APP_REGISTRY: AppDefinition[] = [
   { id: "expense",     title: "Expenses",     icon: "Wallet",      accent: "from-accent-green to-accent-teal",       defaultSize: { width: 420, height: 520 }, component: Expense },
   { id: "trainer",     title: "Trainer",      icon: "Dumbbell",    accent: "from-accent-purple to-accent-blue",      defaultSize: { width: 380, height: 520 }, component: GestureTrainer },
   { id: "colorpicker", title: "Colors",       icon: "Pipette",     accent: "from-accent-pink to-accent-amber",       defaultSize: { width: 340, height: 520 }, component: ColorPicker },
+  { id: "kanban",      title: "Kanban",       icon: "Kanban",      accent: "from-accent-blue to-accent-purple",      defaultSize: { width: 680, height: 480 }, component: Kanban },
+  { id: "visualizer",  title: "Visualizer",   icon: "BarChart2",   accent: "from-accent-purple to-accent-pink",      defaultSize: { width: 560, height: 400 }, component: Visualizer },
+  { id: "vault",       title: "Vault",        icon: "ShieldCheck", accent: "from-accent-blue/80 to-accent-teal/80",  defaultSize: { width: 420, height: 500 }, component: Vault },
+  { id: "rss",         title: "RSS Reader",   icon: "Rss",         accent: "from-accent-amber to-accent-pink",       defaultSize: { width: 520, height: 500 }, component: RSS },
+  { id: "flashcards",  title: "Flashcards",   icon: "BookOpen",    accent: "from-accent-teal to-accent-blue",        defaultSize: { width: 420, height: 520 }, component: Flashcards },
+  { id: "appusage",    title: "App Usage",    icon: "PieChart",    accent: "from-accent-purple to-accent-blue",      defaultSize: { width: 420, height: 460 }, component: AppUsage },
 ];

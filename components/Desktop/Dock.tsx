@@ -6,8 +6,10 @@ import {
   Image as ImageIcon, Sparkles, Terminal as TerminalIcon,
   Clock, Settings as SettingsIcon, FolderOpen, LayoutGrid, Pencil,
   Timer, CheckSquare, FileText, Wallet, Dumbbell, Pipette,
+  BarChart2, ShieldCheck, Rss, BookOpen, PieChart,
   type LucideIcon,
 } from "lucide-react";
+import { Kanban as KanbanIcon } from "lucide-react";
 import { APP_REGISTRY } from "@/components/Apps/appRegistry";
 import { useWindowManager } from "@/hooks/useWindowManager";
 import { GlassPanel } from "@/components/UI/GlassPanel";
@@ -29,11 +31,18 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Wallet,
   Dumbbell,
   Pipette,
+  Kanban: KanbanIcon,
+  BarChart2,
+  ShieldCheck,
+  Rss,
+  BookOpen,
+  PieChart,
 };
 
 const DOCK_APP_IDS = [
   "notes", "music", "weather", "calculator", "gallery", "assistant",
-  "terminal", "clock", "sketch", "pomodoro", "habits", "expense", "colorpicker",
+  "terminal", "clock", "sketch", "pomodoro", "habits",
+  "expense", "kanban", "visualizer", "vault", "rss", "flashcards",
 ];
 
 export function Dock() {
@@ -46,6 +55,7 @@ export function Dock() {
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 24, delay: 0.2 }}
       className="fixed inset-x-0 bottom-5 z-50 flex justify-center"
+      data-dock="true"
     >
       <GlassPanel strong className="flex items-end gap-1.5 rounded-3xl px-3 py-2.5 shadow-dock overflow-x-auto max-w-[96vw]">
         <DockButton onClick={toggleLauncher} label="Launcher">

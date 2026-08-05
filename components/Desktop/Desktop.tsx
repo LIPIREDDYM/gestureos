@@ -24,7 +24,11 @@ import { GestureCursor } from "@/components/Gesture/GestureCursor";
 import { QuickNote } from "./QuickNote";
 import { GestureScorePanel } from "@/components/Gesture/GestureScorePanel";
 import { WidgetBar } from "./WidgetBar";
+import { ContextMenu } from "./ContextMenu";
 import { GlassPanel } from "@/components/UI/GlassPanel";
+import { GestureHistory } from "@/components/Gesture/GestureHistory";
+import { useGestureHistory } from "@/hooks/useGestureHistory";
+import { useAppUsage } from "@/hooks/useAppUsage";
 
 const GESTURE_GUIDE = [
   { gesture: "✋ Open Palm", action: "Launcher" },
@@ -71,6 +75,7 @@ export function Desktop() {
   const [toast, setToast] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
   const [showScores, setShowScores] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,6 +84,8 @@ export function Desktop() {
 
   const settings = useSettings();
   const { push: pushNotification } = useNotifications();
+  const { push: pushGestureHistory } = useGestureHistory();
+  const { tick: tickUsage } = useAppUsage();
 
   const { videoRef, cameraStatus, currentFrame, fps, errorMessage } = useHandTracking({
     enabled: gestureControlEnabled,
@@ -98,6 +105,11 @@ export function Desktop() {
   const handleGesture = useCallback(
     (event: GestureEvent) => {
       if (settings.soundEnabled) playSound("click");
+
+      // Record to gesture history
+      if (event.type !== "none") {
+        pushGestureHistory({ type: event.type, confidence: event.confidence, timestamp: event.timestamp });
+      }
 
       switch (event.type) {
         case "open_palm":
@@ -213,7 +225,16 @@ export function Desktop() {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleLauncher]);
 
-  // Push a welcome notification after boot
+  // App usage tracking — tick every second for the active window
+  useEffect(() => {
+    const id = setInterval(() => {
+      const { activeWindowId, windows } = useWindowManager.getState();
+      if (!activeWindowId) return;
+      const win = windows.find(w => w.windowId === activeWindowId);
+      if (win && !win.isMinimized) tickUsage(win.appId, 1000);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [tickUsage]);
   useEffect(() => {
     if (booted) {
       setTimeout(() => {
@@ -252,6 +273,7 @@ export function Desktop() {
       <NotificationCenter />
       <Spotlight open={spotlightOpen} onClose={() => setSpotlightOpen(false)} />
       <WidgetBar fps={fps} handDetected={!!currentFrame} gestureEnabled={gestureControlEnabled} />
+      <ContextMenu />
 
       {gestureControlEnabled && (
         <>
@@ -319,6 +341,19 @@ export function Desktop() {
             </svg>
           </button>
 
+          {/* Gesture history toggle */}
+          <button
+            onClick={() => setShowHistory((v) => !v)}
+            className="fixed bottom-24 left-60 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/60 backdrop-blur-md transition hover:bg-white/20 hover:text-white"
+            aria-label="Gesture history"
+            title="Gesture history log"
+          >
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+              <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.2"/>
+              <path d="M7.5 4v3.5l2 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+          </button>
+
           <AnimatePresence>
             {showGuide && (
               <motion.div
@@ -352,6 +387,20 @@ export function Desktop() {
                 className="fixed bottom-36 left-48 z-50"
               >
                 <GestureScorePanel frame={currentFrame} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Gesture history log */}
+          <AnimatePresence>
+            {showHistory && (
+              <motion.div
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                className="fixed bottom-36 left-60 z-50"
+              >
+                <GestureHistory />
               </motion.div>
             )}
           </AnimatePresence>
